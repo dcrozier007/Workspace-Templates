@@ -1,7 +1,7 @@
 #!/usr/bin/env pwsh
 <#
 .SYNOPSIS
-    Check for and manage updates to workspace files from templates (GitHub → Local Fallback).
+    Check for and manage updates to workspace files from templates (GitHub + Local Fallback).
 
 .DESCRIPTION
     Hybrid Template Management System with Three-Tier Fallback:
@@ -18,36 +18,28 @@
     If specified, automatically update files without prompting.
 
 .PARAMETER BackupFiles
-    If specified, create .backup.md files before updating. Default: $true
-
-.PARAMETER UseGitHub
-    If specified, force GitHub sync. Otherwise tries GitHub first, then falls back.
+    If specified, create .backup.md files before updating. Default: true
 
 .PARAMETER SkipGitHub
     If specified, skip GitHub and use local templates only.
 
 .EXAMPLE
-    # Check for updates in current directory (GitHub first, then fallback)
-    .\Check-WorkspaceUpdates.ps1
-
-.EXAMPLE
-    # Force GitHub sync
-    .\Check-WorkspaceUpdates.ps1 -UseGitHub
+    # Check for updates (GitHub first, then fallback)
+    .\Check-WorkspaceUpdates-v2.ps1
 
 .EXAMPLE
     # Skip GitHub, use local only
-    .\Check-WorkspaceUpdates.ps1 -SkipGitHub -AutoUpdate
+    .\Check-WorkspaceUpdates-v2.ps1 -SkipGitHub -AutoUpdate
 
 .EXAMPLE
     # Check a specific workspace
-    .\Check-WorkspaceUpdates.ps1 -WorkspacePath "d:\COPilot Workspaces\Generate Demo Scripts"
+    .\Check-WorkspaceUpdates-v2.ps1 -WorkspacePath "d:\COPilot Workspaces\Generate Demo Scripts"
 #>
 
 param(
     [string]$WorkspacePath = (Get-Location).Path,
     [switch]$AutoUpdate,
     [switch]$BackupFiles = $true,
-    [switch]$UseGitHub,
     [switch]$SkipGitHub
 )
 
@@ -69,16 +61,15 @@ if (-not (Test-Path $env:TEMP)) {
     Write-Error "Temp directory not found: $env:TEMP"
 }
 
-Write-Host "╔═══════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║    Workspace Update Checker v2.0 (Hybrid Template System)    ║" -ForegroundColor Cyan
-Write-Host "╚═══════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+Write-Host "========================================================================" -ForegroundColor Cyan
+Write-Host "  Workspace Update Checker v2.0 (Hybrid Template System)" -ForegroundColor Cyan
+Write-Host "========================================================================" -ForegroundColor Cyan
 Write-Host ""
 
 # ==================== HYBRID TEMPLATE SOURCE RESOLUTION ====================
 function Get-TemplateSource {
     param(
-        [bool]$SkipGitHub = $false,
-        [bool]$UseGitHubOnly = $false
+        [bool]$SkipGitHub = $false
     )
     
     $templateSource = @{
@@ -103,26 +94,26 @@ function Get-TemplateSource {
             }
             
             # Clone from GitHub
-            Write-Host "    Cloning from $GitHubRepo" -ForegroundColor Gray
+            Write-Host "      Cloning from $GitHubRepo" -ForegroundColor Gray
             $gitOutput = & git clone --quiet $GitHubRepo $TempGitCloneDir 2>&1
             
             if (Test-Path "$TempGitCloneDir\agents") {
-                Write-Host "    [OK] GitHub source acquired" -ForegroundColor Green
+                Write-Host "      [OK] GitHub source acquired" -ForegroundColor Green
                 $templateSource.Path = $TempGitCloneDir
-                $templateSource.Source = "GitHub"
+                $templateSource.Source = "GitHub (Primary)"
                 $templateSource.IsTemporary = $true
                 $templateSource.TempDir = $TempGitCloneDir
                 return $templateSource
             }
         } catch {
-            Write-Host "    [FAIL] GitHub unavailable: $($_.Exception.Message)" -ForegroundColor Yellow
+            Write-Host "      [SKIP] GitHub unavailable: $($_.Exception.Message)" -ForegroundColor Yellow
         }
     }
     
     # Priority 2: COPilot_Template workspace
     if (Test-Path "$CopilotTemplateDir\agents") {
         Write-Host "  [2] Using COPilot_Template workspace fallback" -ForegroundColor Gray
-        Write-Host "    [OK] COPilot_Template source acquired" -ForegroundColor Green
+        Write-Host "      [OK] COPilot_Template source acquired" -ForegroundColor Green
         $templateSource.Path = $CopilotTemplateDir
         $templateSource.Source = "COPilot_Template (Fallback)"
         $templateSource.IsTemporary = $false
@@ -133,7 +124,7 @@ function Get-TemplateSource {
     $localTemplatePath = Join-Path $WorkspacePath $LocalTemplateDir
     if (Test-Path "$localTemplatePath\agents") {
         Write-Host "  [3] Using local template folder fallback" -ForegroundColor Gray
-        Write-Host "    [OK] Local template source acquired" -ForegroundColor Green
+        Write-Host "      [OK] Local template source acquired" -ForegroundColor Green
         $templateSource.Path = $localTemplatePath
         $templateSource.Source = "Local Template (Fallback)"
         $templateSource.IsTemporary = $false
@@ -145,12 +136,14 @@ function Get-TemplateSource {
 }
 
 # Get the template source using hybrid approach
-$templateSource = Get-TemplateSource -SkipGitHub $SkipGitHub -UseGitHubOnly $UseGitHub
+$templateSource = Get-TemplateSource -SkipGitHub $SkipGitHub
 $TemplatePath = $templateSource.Path
 
-Write-Host "Template Source: $($templateSource.Source)" -ForegroundColor Cyan
 Write-Host ""
-
+Write-Host "Template Source: $($templateSource.Source)" -ForegroundColor Cyan
+Write-Host "Template Path:   $TemplatePath" -ForegroundColor Gray
+Write-Host "Workspace Path:  $WorkspacePath" -ForegroundColor Gray
+Write-Host ""
 
 # Define files to check (relative to template root)
 $filesToCheck = @(
@@ -168,15 +161,10 @@ $filesToCheck = @(
     "instructions\T-SQL-Coding-Style-Guide.md"
 )
 
-Write-Host "Workspace Path:   $WorkspacePath" -ForegroundColor Gray
-Write-Host "Template Source:  $($templateSource.Source)" -ForegroundColor Gray
-Write-Host "Template Path:    $TemplatePath" -ForegroundColor Gray
-Write-Host ""
+Write-Host "Comparing files..." -ForegroundColor Yellow
 
 $updatesAvailable = @()
 $allCurrent = $true
-
-Write-Host "Comparing files..." -ForegroundColor Yellow
 
 # Check each file
 foreach ($file in $filesToCheck) {
@@ -235,10 +223,10 @@ foreach ($update in $updatesAvailable) {
     if ($status -eq "Update Available") {
         $timeDiff = $update.TimeDifference
         Write-Host "  [*] $file" -ForegroundColor Cyan
-        Write-Host "     Status: Update available ($(($timeDiff).TotalDays) days old)" -ForegroundColor Yellow
+        Write-Host "       Status: Update available ($(($timeDiff).TotalDays) days old)" -ForegroundColor Yellow
     } else {
         Write-Host "  [*] $file" -ForegroundColor Cyan
-        Write-Host "     Status: $status" -ForegroundColor Yellow
+        Write-Host "       Status: $status" -ForegroundColor Yellow
     }
 }
 
@@ -284,7 +272,7 @@ if ($response -eq "Yes" -or $response -eq "Y") {
             Copy-Item $templatePath $workspacePath -Force
             $updatedCount++
         } catch {
-            Write-Host "  [FAIL] $file - Error: $_" -ForegroundColor Red
+            Write-Host "  [ERROR] $file - Error: $_" -ForegroundColor Red
         }
     }
     
@@ -292,7 +280,7 @@ if ($response -eq "Yes" -or $response -eq "Y") {
     Write-Host "[OK] Updated $updatedCount file(s)" -ForegroundColor Green
     Write-Host ""
     Write-Host "Tip: Reload your VS Code window for changes to take effect" -ForegroundColor Cyan
-    Write-Host "     Ctrl+Shift+P → 'Reload Window'" -ForegroundColor Cyan
+    Write-Host "     Ctrl+Shift+P, then type 'Reload Window'" -ForegroundColor Cyan
     
 } elseif ($response -eq "Show Details" -or $response -eq "D") {
     Write-Host ""
@@ -301,14 +289,16 @@ if ($response -eq "Yes" -or $response -eq "Y") {
     
     foreach ($update in $updatesAvailable) {
         Write-Host "File: $($update.File)" -ForegroundColor Cyan
-        Write-Host "Template: $($update.TemplatePath)"
-        Write-Host "Workspace: $($update.WorkspacePath)"
+        Write-Host "  Template: $($update.TemplatePath)"
+        Write-Host "  Workspace: $($update.WorkspacePath)"
         
         if ($update.Status -eq "Update Available") {
-            Write-Host "Template LastWriteTime: $($update.LastWriteTime)"
+            Write-Host "  Template LastWriteTime: $($update.LastWriteTime)"
             
-            $workspaceFile = Get-Item $update.WorkspacePath
-            Write-Host "Workspace LastWriteTime: $($workspaceFile.LastWriteTime)"
+            $workspaceFile = Get-Item $update.WorkspacePath -ErrorAction SilentlyContinue
+            if ($workspaceFile) {
+                Write-Host "  Workspace LastWriteTime: $($workspaceFile.LastWriteTime)"
+            }
         }
         Write-Host ""
     }
@@ -325,11 +315,10 @@ if ($templateSource.IsTemporary -and (Test-Path $templateSource.TempDir)) {
         Remove-Item $templateSource.TempDir -Recurse -Force -ErrorAction SilentlyContinue
         Write-Host "[OK] Temporary files cleaned up" -ForegroundColor Gray
     } catch {
-        Write-Host "⚠ Could not clean up temp directory: $_" -ForegroundColor Yellow
+        Write-Host "[WARN] Could not clean up temp directory: $_" -ForegroundColor Yellow
     }
 }
 
 Write-Host ""
 Write-Host "Template source used: $($templateSource.Source)" -ForegroundColor Cyan
 Write-Host ""
-}
