@@ -1,5 +1,10 @@
 # Workspace Templates Changelog
 
+## [1.0.1] - 2026-10-04
+
+### Changed
+- Test workflow verification: Automated git push workflow tested successfully
+
 ## [1.0.0] - 2026-10-04
 
 ### Added
