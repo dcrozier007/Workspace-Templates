@@ -1,0 +1,28 @@
+{
+  "version": "1.0.0",
+  "sourceRepository": "https://github.com/YOUR-USERNAME/Workspace-Templates",
+  "files": {
+    "agents": [
+      "SQL-Server-admin.agent.md",
+      "powershell-dev.agent.md",
+      "windows-server-admin.agent.md",
+      "communications-recruiter.agent.md"
+    ],
+    "instructions": [
+      "SQL-Server-admin.instructions.md",
+      "powershell-dev.instructions.md",
+      "windows-server-admin.instructions.md",
+      "communications-recruiter.instructions.md",
+      "T-SQL-Coding-Style-Guide.md"
+    ],
+    "config": [
+      ".copilot-instructions.md",
+      "README.md",
+      "USER_GUIDE.md",
+      "MAINTENANCE.md"
+    ]
+  },
+  "updateStrategy": "auto",
+  "checkInterval": 7,
+  "lastUpdate": "2026-10-04T00:00:00Z"
+}

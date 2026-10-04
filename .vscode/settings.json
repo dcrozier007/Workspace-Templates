@@ -1,0 +1,26 @@
+{
+  "copilot.conversationStarters": [
+    "Update agents or instructions",
+    "Prepare files for GitHub push",
+    "Review changes before commit",
+    "Update CHANGELOG"
+  ],
+  "files.exclude": {
+    "**/.git": false,
+    "**/node_modules": true
+  },
+  "[markdown]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.wordWrap": "on"
+  },
+  "files.associations": {
+    "*.agent.md": "markdown",
+    "*.instructions.md": "markdown"
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.vscode": false
+  },
+  "editor.rulers": [80, 120],
+  "editor.wordWrap": "on"
+}
