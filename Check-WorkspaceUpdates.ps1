@@ -92,7 +92,7 @@ function Get-TemplateSource {
     
     # Priority 1: GitHub (unless skipped)
     if (-not $SkipGitHub) {
-        Write-Host "  → Attempting GitHub..." -ForegroundColor Gray
+        Write-Host "  [1] Attempting GitHub..." -ForegroundColor Gray
         try {
             # Ensure Git is in PATH
             if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
@@ -107,7 +107,7 @@ function Get-TemplateSource {
             $gitOutput = & git clone --quiet $GitHubRepo $TempGitCloneDir 2>&1
             
             if (Test-Path "$TempGitCloneDir\agents") {
-                Write-Host "    ✓ GitHub source acquired" -ForegroundColor Green
+                Write-Host "    [OK] GitHub source acquired" -ForegroundColor Green
                 $templateSource.Path = $TempGitCloneDir
                 $templateSource.Source = "GitHub"
                 $templateSource.IsTemporary = $true
@@ -115,14 +115,14 @@ function Get-TemplateSource {
                 return $templateSource
             }
         } catch {
-            Write-Host "    ✗ GitHub unavailable: $($_.Exception.Message)" -ForegroundColor Yellow
+            Write-Host "    [FAIL] GitHub unavailable: $($_.Exception.Message)" -ForegroundColor Yellow
         }
     }
     
     # Priority 2: COPilot_Template workspace
     if (Test-Path "$CopilotTemplateDir\agents") {
-        Write-Host "  → Using COPilot_Template workspace fallback" -ForegroundColor Gray
-        Write-Host "    ✓ COPilot_Template source acquired" -ForegroundColor Green
+        Write-Host "  [2] Using COPilot_Template workspace fallback" -ForegroundColor Gray
+        Write-Host "    [OK] COPilot_Template source acquired" -ForegroundColor Green
         $templateSource.Path = $CopilotTemplateDir
         $templateSource.Source = "COPilot_Template (Fallback)"
         $templateSource.IsTemporary = $false
@@ -132,8 +132,8 @@ function Get-TemplateSource {
     # Priority 3: Local template folder
     $localTemplatePath = Join-Path $WorkspacePath $LocalTemplateDir
     if (Test-Path "$localTemplatePath\agents") {
-        Write-Host "  → Using local template folder fallback" -ForegroundColor Gray
-        Write-Host "    ✓ Local template source acquired" -ForegroundColor Green
+        Write-Host "  [3] Using local template folder fallback" -ForegroundColor Gray
+        Write-Host "    [OK] Local template source acquired" -ForegroundColor Green
         $templateSource.Path = $localTemplatePath
         $templateSource.Source = "Local Template (Fallback)"
         $templateSource.IsTemporary = $false
@@ -221,11 +221,11 @@ foreach ($file in $filesToCheck) {
 # Report results
 Write-Host ""
 if ($allCurrent) {
-    Write-Host "✓ Your workspace is up to date!" -ForegroundColor Green
+    Write-Host "[OK] Your workspace is up to date!" -ForegroundColor Green
     exit 0
 }
 
-Write-Host "✨ Updates are available:" -ForegroundColor Yellow
+Write-Host "[!] Updates are available:" -ForegroundColor Yellow
 Write-Host ""
 
 foreach ($update in $updatesAvailable) {
@@ -234,10 +234,10 @@ foreach ($update in $updatesAvailable) {
     
     if ($status -eq "Update Available") {
         $timeDiff = $update.TimeDifference
-        Write-Host "  📄 $file" -ForegroundColor Cyan
+        Write-Host "  [*] $file" -ForegroundColor Cyan
         Write-Host "     Status: Update available ($(($timeDiff).TotalDays) days old)" -ForegroundColor Yellow
     } else {
-        Write-Host "  📄 $file" -ForegroundColor Cyan
+        Write-Host "  [*] $file" -ForegroundColor Cyan
         Write-Host "     Status: $status" -ForegroundColor Yellow
     }
 }
@@ -269,9 +269,9 @@ if ($response -eq "Yes" -or $response -eq "Y") {
             if ($BackupFiles -and (Test-Path $workspacePath)) {
                 $backupPath = "$workspacePath.backup"
                 Copy-Item $workspacePath $backupPath -Force
-                Write-Host "  ✓ $file (backed up to .backup)" -ForegroundColor Green
+                Write-Host "  [OK] $file (backed up to .backup)" -ForegroundColor Green
             } else {
-                Write-Host "  ✓ $file" -ForegroundColor Green
+                Write-Host "  [OK] $file" -ForegroundColor Green
             }
             
             # Create directory if needed
@@ -284,12 +284,12 @@ if ($response -eq "Yes" -or $response -eq "Y") {
             Copy-Item $templatePath $workspacePath -Force
             $updatedCount++
         } catch {
-            Write-Host "  ✗ $file - Error: $_" -ForegroundColor Red
+            Write-Host "  [FAIL] $file - Error: $_" -ForegroundColor Red
         }
     }
     
     Write-Host ""
-    Write-Host "✓ Updated $updatedCount file(s)" -ForegroundColor Green
+    Write-Host "[OK] Updated $updatedCount file(s)" -ForegroundColor Green
     Write-Host ""
     Write-Host "Tip: Reload your VS Code window for changes to take effect" -ForegroundColor Cyan
     Write-Host "     Ctrl+Shift+P → 'Reload Window'" -ForegroundColor Cyan
@@ -323,7 +323,7 @@ if ($templateSource.IsTemporary -and (Test-Path $templateSource.TempDir)) {
     Write-Host "Cleaning up temporary files..." -ForegroundColor Gray
     try {
         Remove-Item $templateSource.TempDir -Recurse -Force -ErrorAction SilentlyContinue
-        Write-Host "✓ Temporary files cleaned up" -ForegroundColor Gray
+        Write-Host "[OK] Temporary files cleaned up" -ForegroundColor Gray
     } catch {
         Write-Host "⚠ Could not clean up temp directory: $_" -ForegroundColor Yellow
     }
